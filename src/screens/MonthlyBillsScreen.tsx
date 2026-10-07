@@ -72,32 +72,39 @@ export const MonthlyBillsScreen: React.FC = () => {
         <View style={styles.statementCard}>
           <Text style={styles.statementTitle}>Monthly Bill Statement</Text>
 
+          {summary.previousBalanceDue > 0 ? (
+            <View style={styles.row}>
+              <Text style={styles.rowLabel}>Previous Carried Balance:</Text>
+              <Text style={[styles.rowValue, styles.dueRed]}>+ ₹{summary.previousBalanceDue}</Text>
+            </View>
+          ) : null}
+
           <View style={styles.row}>
             <Text style={styles.rowLabel}>Total Liters Bought:</Text>
             <Text style={styles.rowValue}>{summary.totalLiters} Liters</Text>
           </View>
 
           <View style={styles.row}>
-            <Text style={styles.rowLabel}>Total Bill Amount:</Text>
+            <Text style={styles.rowLabel}>This Month's Bill:</Text>
             <Text style={styles.rowValue}>₹{summary.totalCost}</Text>
           </View>
 
           <View style={styles.row}>
-            <Text style={styles.rowLabel}>Total Amount Paid:</Text>
+            <Text style={styles.rowLabel}>Paid This Month:</Text>
             <Text style={[styles.rowValue, styles.paidText]}>- ₹{summary.totalPaid}</Text>
           </View>
 
           <View style={styles.divider} />
 
           <View style={styles.row}>
-            <Text style={styles.dueLabel}>Balance Due:</Text>
+            <Text style={styles.dueLabel}>Total Outstanding Due:</Text>
             <Text
               style={[
                 styles.dueValue,
-                summary.balanceDue > 0 ? styles.dueRed : styles.dueGreen,
+                summary.totalBalanceDue > 0 ? styles.dueRed : styles.dueGreen,
               ]}
             >
-              ₹{summary.balanceDue}
+              ₹{summary.totalBalanceDue}
             </Text>
           </View>
 

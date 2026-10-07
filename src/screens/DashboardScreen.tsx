@@ -12,9 +12,11 @@ import { Header } from '../components/Header';
 import { CustomLogModal } from '../components/CustomLogModal';
 import { PaymentModal } from '../components/PaymentModal';
 import { useMilkStore } from '../store/useMilkStore';
+import { useAuthStore } from '../store/useAuthStore';
 import { TimeSlot, PurchaseEntry } from '../types';
 
 export const DashboardScreen: React.FC = () => {
+  const { user } = useAuthStore();
   const {
     logPurchase,
     getEntryForSlot,
@@ -22,6 +24,8 @@ export const DashboardScreen: React.FC = () => {
     vendorInfo,
     loadStore,
     isLoading,
+    lastSyncedAt,
+    isSyncing,
   } = useMilkStore();
 
   const [refreshing, setRefreshing] = useState(false);
@@ -40,11 +44,9 @@ export const DashboardScreen: React.FC = () => {
     year: 'numeric',
   });
 
-  // Store is initialized at root App.tsx level
-
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadStore();
+    await loadStore(user);
     setRefreshing(false);
   };
 
@@ -54,7 +56,7 @@ export const DashboardScreen: React.FC = () => {
 
   const handleQuickLog = async (slot: TimeSlot, qty: number) => {
     const price = qty === 0.5 ? vendorInfo.priceHalfLiter : vendorInfo.priceOneLiter;
-    await logPurchase(todayStr, slot, qty, price, 'received');
+    await logPurchase(todayStr, slot, qty, price, 'received', '', user);
   };
 
   const openCustomModal = (slot: TimeSlot, entry?: PurchaseEntry) => {
@@ -65,7 +67,10 @@ export const DashboardScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <Header title="🥛 Milk Buyer Dashboard" subtitle={formattedDate} />
+      <Header
+        title="🥛 Milk Buyer Dashboard"
+        subtitle={`Account: @${user?.username || 'Guest'} • ${formattedDate}`}
+      />
 
       <ScrollView
         contentContainerStyle={styles.container}

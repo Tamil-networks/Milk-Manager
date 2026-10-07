@@ -8,12 +8,22 @@ import {
   TouchableOpacity,
   SafeAreaView,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Header } from '../components/Header';
 import { useMilkStore } from '../store/useMilkStore';
+import { useAuthStore } from '../store/useAuthStore';
 
 export const SettingsScreen: React.FC = () => {
-  const { vendorInfo, updateVendorInfo, resetAllData } = useMilkStore();
+  const { user, logout } = useAuthStore();
+  const {
+    vendorInfo,
+    updateVendorInfo,
+    resetAllData,
+    syncWithCloud,
+    isSyncing,
+    lastSyncedAt,
+  } = useMilkStore();
 
   const [name, setName] = useState(vendorInfo.vendorName);
   const [phone, setPhone] = useState(vendorInfo.phone || '');
@@ -40,9 +50,28 @@ export const SettingsScreen: React.FC = () => {
       phone: phone.trim(),
       priceHalfLiter: parsedHalf,
       priceOneLiter: parsedOne,
-    });
+    }, user);
 
     Alert.alert('Settings Saved', 'Default rates and vendor info updated successfully.');
+  };
+
+  const handleManualSync = async () => {
+    if (!user) return;
+    await syncWithCloud(user);
+    Alert.alert('Cloud Sync Complete', 'All your milk logs and settings are backed up to your account.');
+  };
+
+  const handleLogout = () => {
+    Alert.alert('Sign Out', 'Are you sure you want to log out of your account?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Sign Out',
+        style: 'destructive',
+        onPress: async () => {
+          await logout();
+        },
+      },
+    ]);
   };
 
   const handleResetData = () => {
@@ -60,7 +89,7 @@ export const SettingsScreen: React.FC = () => {
             setPhone('');
             setHalfPrice('25');
             setOnePrice('50');
-            Alert.alert('Reset Complete', 'All offline data cleared.');
+            Alert.alert('Reset Complete', 'All local data cleared.');
           },
         },
       ]
@@ -69,9 +98,42 @@ export const SettingsScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <Header title="⚙️ Settings & Rates" subtitle="Configure default prices and vendor info" />
+      <Header title="⚙️ Settings & Account" subtitle="Configure default prices, vendor & account sync" />
 
       <ScrollView contentContainerStyle={styles.container}>
+        {/* Active User Account Section */}
+        <View style={styles.userCard}>
+          <View style={styles.userHeaderRow}>
+            <View>
+              <Text style={styles.userRoleLabel}>Active Account</Text>
+              <Text style={styles.usernameText}>@{user?.username || 'Guest'}</Text>
+              {lastSyncedAt ? (
+                <Text style={styles.syncStatusText}>
+                  Last Synced: {new Date(lastSyncedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </Text>
+              ) : (
+                <Text style={styles.syncStatusText}>Cross-Device Cloud Sync Enabled</Text>
+              )}
+            </View>
+
+            <TouchableOpacity
+              style={styles.syncBtn}
+              onPress={handleManualSync}
+              disabled={isSyncing}
+            >
+              {isSyncing ? (
+                <ActivityIndicator color="#0284C7" size="small" />
+              ) : (
+                <Text style={styles.syncBtnText}>🔄 Sync Now</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+            <Text style={styles.logoutBtnText}>Sign Out of Account</Text>
+          </TouchableOpacity>
+        </View>
+
         {/* Price Configuration Section */}
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>💰 Default Base Prices</Text>
@@ -129,19 +191,11 @@ export const SettingsScreen: React.FC = () => {
           <Text style={styles.saveBtnText}>Save Preferences</Text>
         </TouchableOpacity>
 
-        {/* Storage & Privacy Info */}
-        <View style={styles.offlineBox}>
-          <Text style={styles.offlineTitle}>🔒 100% Offline & Private</Text>
-          <Text style={styles.offlineText}>
-            All your daily milk logs, rates, and payments are stored locally on your device using AsyncStorage. No cloud servers or internet required.
-          </Text>
-        </View>
-
         {/* Reset Data Danger Zone */}
         <View style={styles.dangerCard}>
           <Text style={styles.dangerTitle}>⚠️ Danger Zone</Text>
           <TouchableOpacity style={styles.resetBtn} onPress={handleResetData}>
-            <Text style={styles.resetBtnText}>Clear All Offline Data</Text>
+            <Text style={styles.resetBtnText}>Clear Local Offline Data</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -157,6 +211,61 @@ const styles = StyleSheet.create({
   container: {
     padding: 16,
     paddingBottom: 30,
+  },
+  userCard: {
+    backgroundColor: '#E0F2FE',
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 16,
+  },
+  userHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  userRoleLabel: {
+    fontSize: 12,
+    color: '#0369A1',
+    fontWeight: '600',
+  },
+  usernameText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#0F172A',
+  },
+  syncStatusText: {
+    fontSize: 12,
+    color: '#0284C7',
+    marginTop: 2,
+  },
+  syncBtn: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+  },
+  syncBtnText: {
+    color: '#0369A1',
+    fontWeight: 'bold',
+    fontSize: 13,
+  },
+  logoutBtn: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+    borderRadius: 8,
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+  logoutBtnText: {
+    color: '#EF4444',
+    fontWeight: '600',
+    fontSize: 13,
   },
   sectionCard: {
     backgroundColor: '#FFFFFF',
@@ -212,25 +321,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: 'bold',
-  },
-  offlineBox: {
-    backgroundColor: '#F0F9FF',
-    borderWidth: 1,
-    borderColor: '#BAE6FD',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 20,
-  },
-  offlineTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#0369A1',
-    marginBottom: 4,
-  },
-  offlineText: {
-    fontSize: 12,
-    color: '#0284C7',
-    lineHeight: 18,
   },
   dangerCard: {
     backgroundColor: '#FEF2F2',
